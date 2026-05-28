@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Assotech World — Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: #060B14; color: #E8EDF5; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+  input::placeholder { color: #7A8599; }
+  @keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Dependencies -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+const {
+  LineChart, Line, BarChart, Bar, AreaChart, Area,
+  PieChart, Pie, Cell, RadarChart, Radar, PolarGrid,
+  PolarAngleAxis, ResponsiveContainer, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, ReferenceLine
+} = Recharts;
+
+// ─── PALETTE ───────────────────────────────────────────────────────────────
+const C = {
+  primary:     "#00D4FF",
+  secondary:   "#7B61FF",
+  accent:      "#FF6B35",
+  gold:        "#FFD700",
+  success:     "#00E5A0",
+  danger:      "#FF4757",
+  warning:     "#FFA502",
+  bg:          "#060B14",
+  bgCard:      "rgba(255,255,255,0.04)",
+  bgCardHover: "rgba(255,255,255,0.07)",
+  border:      "rgba(255,255,255,0.08)",
+  borderHover: "rgba(0,212,255,0.3)",
+  text:        "#E8EDF5",
+  muted:       "#7A8599",
+};
+
+// ─── STATIC DATA ────────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { id: "home",        label: "Overview",   icon: "⬡" },
+  { id: "marketing",   label: "Marketing",  icon: "◈" },
+  { id: "financial",   label: "Financial",  icon: "◇" },
+  { id: "realestate",  label: "Projects",   icon: "◆" },
+  { id: "forecasting", label: "Forecast AI",icon: "◉" },
+  { id: "copilot",     label: "AI Copilot", icon: "✦" },
+  { id: "upload",      label: "Data Upload",icon: "⊕" },
+];
+
+const kpiData = [
+  { label:"Total Revenue",    value:"₹48.7Cr", change:"+18.4%", up:true,  sub:"FY 2024–25",            color:C.primary },
+  { label:"Total Bookings",   value:"₹31.2Cr", change:"+12.1%", up:true,  sub:"Confirmed",              color:C.success },
+  { label:"Ad Spend",         value:"₹82.4L",  change:"+6.3%",  up:false, sub:"This Quarter",           color:C.warning },
+  { label:"Total Leads",      value:"14,892",  change:"+24.7%", up:true,  sub:"Qualified: 4,231",       color:C.secondary },
+  { label:"ROAS",             value:"5.91x",   change:"+0.43x", up:true,  sub:"Avg Across Campaigns",   color:C.gold },
+  { label:"Conversion Rate",  value:"8.34%",   change:"+1.2%",  up:true,  sub:"Lead → Booking",         color:C.accent },
+  { label:"Active Campaigns", value:"23",      change:"+5",     up:true,  sub:"Meta + Google",          color:C.primary },
+  { label:"Profit Margin",    value:"34.6%",   change:"+3.1%",  up:true,  sub:"Net Margin",             color:C.success },
+];
+
+const sparkData = [
+  [{v:3.2},{v:4.1},{v:3.8},{v:5.2},{v:4.7},{v:6.1},{v:7.8}],
+  [{v:2.1},{v:2.8},{v:2.5},{v:3.6},{v:3.1},{v:4.2},{v:5.4}],
+  [{v:72},{v:78},{v:81},{v:76},{v:82},{v:85},{v:82}],
+  [{v:1200},{v:1450},{v:1380},{v:1620},{v:1710},{v:1890},{v:1892}],
+  [{v:5.1},{v:5.4},{v:5.2},{v:5.6},{v:5.7},{v:5.8},{v:5.91}],
+  [{v:6.8},{v:7.1},{v:7.4},{v:7.8},{v:7.9},{v:8.1},{v:8.34}],
+  [{v:15},{v:17},{v:18},{v:20},{v:21},{v:22},{v:23}],
+  [{v:29},{v:30},{v:31},{v:32},{v:33},{v:33.8},{v:34.6}],
+];
+
+const revenueData = [
+  {month:"Apr",revenue:3.2,bookings:2.1,forecast:3.4},
+  {month:"May",revenue:4.1,bookings:2.8,forecast:4.3},
+  {month:"Jun",revenue:3.8,bookings:2.5,forecast:4.0},
+  {month:"Jul",revenue:5.2,bookings:3.6,forecast:5.5},
+  {month:"Aug",revenue:4.7,bookings:3.1,forecast:5.0},
+  {month:"Sep",revenue:6.1,bookings:4.2,forecast:6.4},
+  {month:"Oct",revenue:5.8,bookings:3.9,forecast:6.1},
+  {month:"Nov",revenue:7.2,bookings:5.1,forecast:7.6},
+  {month:"Dec",revenue:6.9,bookings:4.8,forecast:7.3},
+  {month:"Jan",revenue:7.8,bookings:5.4,forecast:8.2},
+  {month:"Feb",revenue:null,bookings:null,forecast:8.9},
+  {month:"Mar",revenue:null,bookings:null,forecast:9.7},
+];
+
+const campaignData = [
+  {name:"Meta – Avenue 07",   spend:18.4,leads:3842,cpl:479, roas:6.2,ctr:4.1,status:"Active"},
+  {name:"Google – Blith",     spend:22.1,leads:4210,cpl:525, roas:5.8,ctr:3.7,status:"Active"},
+  {name:"Meta – Canopy",      spend:14.7,leads:2890,cpl:509, roas:4.9,ctr:3.2,status:"Active"},
+  {name:"Google – Nest",      spend:11.2,leads:1980,cpl:566, roas:4.1,ctr:2.9,status:"Paused"},
+  {name:"Meta – Retargeting", spend:8.3, leads:1420,cpl:585, roas:7.4,ctr:5.8,status:"Active"},
+  {name:"YouTube – Brand",    spend:7.7, leads:550, cpl:1400,roas:2.1,ctr:1.4,status:"Active"},
+];
+
+const channelData = [
+  {channel:"Meta Ads",   leads:8152,conversion:9.2, spend:41.4,roas:5.9},
+  {channel:"Google Ads", leads:6190,conversion:8.1, spend:33.3,roas:5.2},
+  {channel:"Organic",    leads:2780,conversion:12.4,spend:0,   roas:null},
+  {channel:"Referral",   leads:1420,conversion:18.3,spend:0,   roas:null},
+  {channel:"YouTube",    leads:350, conversion:3.2, spend:7.7, roas:2.1},
+];
+
+const projects = [
+  {name:"Assotech Avenue 07",type:"Residential",      location:"Bhubaneswar",total:240,sold:178,booked:24,available:38,value:"₹18.4Cr",growth:"+22%",color:C.primary},
+  {name:"Blith",             type:"Premium Villas",   location:"Bhubaneswar",total:120,sold:89, booked:14,available:17,value:"₹14.2Cr",growth:"+15%",color:C.secondary},
+  {name:"Nest",              type:"Affordable Housing",location:"Cuttack",    total:360,sold:241,booked:42,available:77,value:"₹9.8Cr", growth:"+8%", color:C.success},
+  {name:"Canopy",            type:"Eco Township",     location:"Puri",        total:180,sold:102,booked:28,available:50,value:"₹6.3Cr", growth:"+31%",color:C.accent},
+];
+
+const financialMetrics = [
+  {month:"Apr",revenue:3.2,expenses:2.1,profit:1.1,cashflow:0.8},
+  {month:"May",revenue:4.1,expenses:2.6,profit:1.5,cashflow:1.2},
+  {month:"Jun",revenue:3.8,expenses:2.4,profit:1.4,cashflow:1.0},
+  {month:"Jul",revenue:5.2,expenses:3.1,profit:2.1,cashflow:1.7},
+  {month:"Aug",revenue:4.7,expenses:2.9,profit:1.8,cashflow:1.4},
+  {month:"Sep",revenue:6.1,expenses:3.8,profit:2.3,cashflow:1.9},
+  {month:"Oct",revenue:5.8,expenses:3.5,profit:2.3,cashflow:1.8},
+  {month:"Nov",revenue:7.2,expenses:4.2,profit:3.0,cashflow:2.5},
+  {month:"Dec",revenue:6.9,expenses:4.0,profit:2.9,cashflow:2.3},
+  {month:"Jan",revenue:7.8,expenses:4.5,profit:3.3,cashflow:2.7},
+];
+
+const forecastData = [
+  {month:"Feb",base:8.9, optimistic:10.2,pessimistic:7.4},
+  {month:"Mar",base:9.7, optimistic:11.4,pessimistic:8.1},
+  {month:"Apr",base:10.8,optimistic:12.9,pessimistic:8.9},
+  {month:"May",base:11.4,optimistic:13.8,pessimistic:9.3},
+  {month:"Jun",base:12.1,optimistic:14.7,pessimistic:9.8},
+];
+
+const aiInsights = [
+  {type:"opportunity",icon:"↗",title:"Scale Avenue 07 Meta Campaign",    desc:"ROAS 6.2x — 40% above portfolio avg. Increasing budget by ₹5L projected to yield ₹31L additional revenue.",action:"Increase Budget"},
+  {type:"warning",   icon:"⚠",title:"YouTube CPL Critically High",       desc:"CPL of ₹1,400 vs portfolio avg ₹517. Recommend pausing and reallocating ₹7.7L to Google Ads.",action:"Reallocate Budget"},
+  {type:"insight",   icon:"◎",title:"Canopy Demand Surge Detected",       desc:"Eco-housing searches +67% in Puri region. Pre-launch campaign recommended before Q4 push.",action:"Launch Campaign"},
+  {type:"risk",      icon:"▽",title:"Nest Inventory Warning",             desc:"At current sales velocity, Nest will sell out in 4.2 months. Pricing optimization could extend runway.",action:"Optimize Pricing"},
+];
+
+const copilotConversations = [
+  {role:"user",text:"Which campaign has the highest ROI this quarter?"},
+  {role:"ai",  text:"Meta – Retargeting leads with ROAS 7.4x, driven by warm audiences. Avenue 07 Meta is close at 6.2x with significantly higher volume. I recommend scaling both, but Retargeting needs budget cap management to avoid audience fatigue."},
+  {role:"user",text:"Forecast next month revenue"},
+  {role:"ai",  text:"Base forecast for February is ₹8.9Cr (CI: ₹7.4Cr – ₹10.2Cr). Key drivers: Blith Phase 2 handovers (+₹1.8Cr) and elevated Google Ads conversion from Nest campaign optimizations. High confidence interval reflects strong seasonal demand from January momentum."},
+];
+
+// ─── SMALL COMPONENTS ───────────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{background:"rgba(6,11,20,0.95)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",fontSize:12}}>
+      <p style={{color:C.muted,marginBottom:4}}>{label}</p>
+      {payload.map((p,i)=>(
+        <p key={i} style={{color:p.color,margin:"2px 0"}}>{p.name}: <strong style={{color:C.text}}>{p.value}</strong></p>
+      ))}
+    </div>
+  );
+}
+
+function AnimatedCounter({value,duration=1200}) {
+  const [display,setDisplay] = useState("0");
+  const m = value?.match(/[\d.]+/);
+  const numeric = m ? parseFloat(m[0]) : 0;
+  const prefix = value?.replace(/[\d.]+.*/,"") || "";
+  const suffix = value?.replace(/^[^0-9]*[\d.]+/,"") || "";
+  useEffect(()=>{
+    let start=0;
+    const step=numeric/(duration/16);
+    const timer=setInterval(()=>{
+      start+=step;
+      if(start>=numeric){setDisplay(value);clearInterval(timer);}
+      else{
+        const d=start>=1000?Math.round(start).toLocaleString():start.toFixed(numeric%1!==0?1:0);
+        setDisplay(prefix+d+suffix);
+      }
+    },16);
+    return()=>clearInterval(timer);
+  },[value]);
+  return <span>{display}</span>;
+}
+
+function SparkLine({data,color}) {
+  return (
+    <ResponsiveContainer width="100%" height={40}>
+      <LineChart data={data}>
+        <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false}/>
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function GlassCard({children,style={},glow=false}) {
+  const [h,setH]=useState(false);
+  return (
+    <div
+      onMouseEnter={()=>setH(true)}
+      onMouseLeave={()=>setH(false)}
+      style={{
+        background:h?C.bgCardHover:C.bgCard,
+        border:`1px solid ${h?C.borderHover:C.border}`,
+        borderRadius:16,
+        backdropFilter:"blur(12px)",
+        transition:"all 0.25s ease",
+        boxShadow:glow&&h?`0 0 24px ${C.primary}22`:"none",
+        ...style,
+      }}
+    >{children}</div>
+  );
+}
+
+function KPICard({kpi,index}) {
+  const [h,setH]=useState(false);
+  return (
+    <div
+      onMouseEnter={()=>setH(true)}
+      onMouseLeave={()=>setH(false)}
+      style={{
+        background:h?C.bgCardHover:C.bgCard,
+        border:`1px solid ${h?kpi.color+"44":C.border}`,
+        borderRadius:16,padding:"20px",
+        transition:"all 0.25s ease",
+        cursor:"default",
+        boxShadow:h?`0 4px 24px ${kpi.color}18`:"none",
+        position:"relative",overflow:"hidden",
+      }}
+    >
+      <div style={{position:"absolute",top:0,right:0,width:80,height:80,background:`radial-gradient(circle, ${kpi.color}15, transparent)`,borderRadius:"0 16px 0 0"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+        <span style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:"0.08em"}}>{kpi.label}</span>
+        <span style={{fontSize:11,color:kpi.up?C.success:C.danger,background:kpi.up?`${C.success}18`:`${C.danger}18`,padding:"2px 8px",borderRadius:20,fontWeight:600}}>
+          {kpi.up?"↑":"↓"} {kpi.change}
+        </span>
+      </div>
+      <div style={{fontSize:28,fontWeight:700,color:C.text,letterSpacing:"-0.02em",marginBottom:2}}>
+        <AnimatedCounter value={kpi.value}/>
+      </div>
+      <div style={{fontSize:11,color:C.muted,marginBottom:8}}>{kpi.sub}</div>
+      <SparkLine data={sparkData[index]} color={kpi.color}/>
+    </div>
+  );
+}
+
+// ─── NAV ────────────────────────────────────────────────────────────────────
+function SidebarNav({active,setActive}) {
+  return (
+    <div style={{
+      width:220,minHeight:"100vh",
+      background:"rgba(6,11,20,0.98)",
+      borderRight:`1px solid ${C.border}`,
+      padding:"24px 0",
+      position:"fixed",left:0,top:0,bottom:0,zIndex:100,
+      backdropFilter:"blur(20px)",
+      display:"flex",flexDirection:"column",
+    }}>
+      <div style={{padding:"0 20px 28px"}}>
+        <div style={{fontSize:13,color:C.primary,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:4}}>ASSOTECH</div>
+        <div style={{fontSize:10,color:C.muted,letterSpacing:"0.12em"}}>INTELLIGENCE PLATFORM</div>
+      </div>
+      <div style={{flex:1}}>
+        {NAV_ITEMS.map(item=>(
+          <div
+            key={item.id}
+            onClick={()=>setActive(item.id)}
+            style={{
+              display:"flex",alignItems:"center",gap:12,
+              padding:"11px 20px",cursor:"pointer",
+              borderLeft:active===item.id?`2px solid ${C.primary}`:"2px solid transparent",
+              background:active===item.id?`${C.primary}10`:"transparent",
+              color:active===item.id?C.primary:C.muted,
+              fontSize:13,fontWeight:active===item.id?600:400,
+              transition:"all 0.15s",marginBottom:2,
+            }}
+          >
+            <span style={{fontSize:14,width:18}}>{item.icon}</span>
+            {item.label}
+          </div>
+        ))}
+      </div>
+      <div style={{padding:"0 20px",borderTop:`1px solid ${C.border}`,paddingTop:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:32,height:32,borderRadius:"50%",background:`linear-gradient(135deg, ${C.primary}, ${C.secondary})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#000"}}>SS</div>
+          <div>
+            <div style={{fontSize:12,fontWeight:600,color:C.text}}>Subham S.</div>
+            <div style={{fontSize:10,color:C.muted}}>Sales & Marketing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Header({activeModule}) {
+  const label = NAV_ITEMS.find(n=>n.id===activeModule)?.label || "Dashboard";
+  return (
+    <div style={{
+      height:64,borderBottom:`1px solid ${C.border}`,
+      display:"flex",alignItems:"center",justifyContent:"space-between",
+      padding:"0 28px",
+      background:"rgba(6,11,20,0.9)",backdropFilter:"blur(20px)",
+      position:"sticky",top:0,zIndex:90,
+    }}>
+      <div style={{display:"flex",alignItems:"center",gap:16}}>
+        <span style={{fontSize:18,fontWeight:700,color:C.text}}>{label}</span>
+        <span style={{fontSize:11,color:C.success,background:`${C.success}18`,padding:"3px 10px",borderRadius:20,fontWeight:600}}>● LIVE</span>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <div style={{fontSize:12,color:C.muted,background:C.bgCard,border:`1px solid ${C.border}`,padding:"6px 14px",borderRadius:8}}>
+          Apr 2024 – Jan 2025 ▾
+        </div>
+        <div style={{width:36,height:36,borderRadius:"50%",background:C.bgCard,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,color:C.muted}}>🔔</div>
+        <div style={{width:36,height:36,borderRadius:"50%",background:C.bgCard,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:C.muted}}>⚙</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── OVERVIEW ───────────────────────────────────────────────────────────────
+function OverviewModule() {
+  return (
+    <div style={{padding:28}}>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6}}>Executive Command Center</div>
+        <div style={{fontSize:13,color:C.muted}}>Real-time intelligence across all business verticals · Updated 2 min ago</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:28}}>
+        {kpiData.map((kpi,i)=><KPICard key={i} kpi={kpi} index={i}/>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:20,marginBottom:20}}>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Revenue & Bookings Trend + Forecast</div>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={revenueData}>
+              <defs>
+                <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={C.primary} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={C.primary} stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="bk" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={C.secondary} stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor={C.secondary} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="month" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`₹${v}Cr`}/>
+              <Tooltip content={<CustomTooltip/>}/>
+              <Area type="monotone" dataKey="revenue"  name="Revenue (₹Cr)"  stroke={C.primary}   fill="url(#rev)" strokeWidth={2}/>
+              <Area type="monotone" dataKey="bookings" name="Bookings (₹Cr)" stroke={C.secondary} fill="url(#bk)"  strokeWidth={2}/>
+              <Line type="monotone" dataKey="forecast"  name="Forecast (₹Cr)" stroke={C.gold} strokeWidth={2} strokeDasharray="6 3" dot={false}/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </GlassCard>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Channel Revenue Split</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={[
+                {name:"Meta Ads",value:38},{name:"Google Ads",value:31},
+                {name:"Organic",value:16},{name:"Referral",value:10},{name:"Other",value:5}
+              ]} cx="50%" cy="50%" innerRadius={55} outerRadius={90} dataKey="value" paddingAngle={3}>
+                {[C.primary,C.secondary,C.success,C.accent,C.warning].map((c,i)=><Cell key={i} fill={c}/>)}
+              </Pie>
+              <Tooltip contentStyle={{background:"rgba(6,11,20,0.95)",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12}}/>
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:8}}>
+            {["Meta","Google","Organic","Referral","Other"].map((n,i)=>(
+              <span key={i} style={{fontSize:10,color:C.muted,display:"flex",alignItems:"center",gap:4}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:[C.primary,C.secondary,C.success,C.accent,C.warning][i],display:"inline-block"}}/>
+                {n}
+              </span>
+            ))}
+          </div>
+        </GlassCard>
+      </div>
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{color:C.primary}}>✦</span> AI Recommendations
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+          {aiInsights.map((r,i)=>{
+            const typeColor={opportunity:C.success,warning:C.warning,insight:C.primary,risk:C.danger};
+            const col=typeColor[r.type];
+            return (
+              <GlassCard key={i} style={{padding:18}} glow>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:16,color:col}}>{r.icon}</span>
+                    <span style={{fontSize:12,fontWeight:600,color:C.text}}>{r.title}</span>
+                  </div>
+                  <span style={{fontSize:10,padding:"3px 8px",borderRadius:12,background:`${col}20`,color:col,textTransform:"capitalize"}}>{r.type}</span>
+                </div>
+                <div style={{fontSize:12,color:C.muted,lineHeight:1.6,marginBottom:12}}>{r.desc}</div>
+                <button style={{fontSize:11,color:C.primary,background:`${C.primary}18`,border:`1px solid ${C.primary}44`,borderRadius:8,padding:"5px 12px",cursor:"pointer",fontWeight:600}}>{r.action} →</button>
+              </GlassCard>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MARKETING ──────────────────────────────────────────────────────────────
+function MarketingModule() {
+  return (
+    <div style={{padding:28}}>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6}}>Marketing Analytics</div>
+        <div style={{fontSize:13,color:C.muted}}>Campaign performance · Lead funnel · Channel intelligence</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:24}}>
+        {[
+          {label:"Total Ad Spend",value:"₹82.4L",color:C.warning},
+          {label:"Total Leads",   value:"14,892", color:C.primary},
+          {label:"Avg CPL",       value:"₹554",   color:C.accent},
+          {label:"Avg ROAS",      value:"5.91x",  color:C.success},
+          {label:"Avg CTR",       value:"3.82%",  color:C.secondary},
+        ].map((k,i)=>(
+          <GlassCard key={i} style={{padding:18,textAlign:"center"}}>
+            <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{k.label}</div>
+            <div style={{fontSize:22,fontWeight:700,color:k.color}}>{k.value}</div>
+          </GlassCard>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:20,marginBottom:20}}>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Campaign Performance Matrix</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead>
+                <tr style={{borderBottom:`1px solid ${C.border}`}}>
+                  {["Campaign","Spend (L)","Leads","CPL (₹)","ROAS","CTR %","Status"].map(h=>(
+                    <th key={h} style={{padding:"8px 12px",color:C.muted,fontWeight:500,textAlign:"left",whiteSpace:"nowrap"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {campaignData.map((c,i)=>(
+                  <tr key={i} style={{borderBottom:`1px solid ${C.border}`,transition:"background 0.15s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.bgCardHover}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <td style={{padding:"10px 12px",color:C.text,fontWeight:500}}>{c.name}</td>
+                    <td style={{padding:"10px 12px",color:C.text}}>{c.spend}</td>
+                    <td style={{padding:"10px 12px",color:C.text}}>{c.leads.toLocaleString()}</td>
+                    <td style={{padding:"10px 12px",color:c.cpl>600?C.danger:C.success}}>{c.cpl}</td>
+                    <td style={{padding:"10px 12px",color:c.roas>=5?C.success:C.warning,fontWeight:600}}>{c.roas}x</td>
+                    <td style={{padding:"10px 12px",color:C.text}}>{c.ctr}%</td>
+                    <td style={{padding:"10px 12px"}}>
+                      <span style={{fontSize:10,padding:"3px 8px",borderRadius:12,background:c.status==="Active"?`${C.success}20`:`${C.muted}20`,color:c.status==="Active"?C.success:C.muted}}>{c.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Lead Funnel</div>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart layout="vertical" data={[
+              {stage:"Impressions",value:2840000},
+              {stage:"Clicks",     value:108500},
+              {stage:"Leads",      value:14892},
+              {stage:"Qualified",  value:4231},
+              {stage:"Site Visits",value:1820},
+              {stage:"Bookings",   value:354},
+            ]}>
+              <XAxis type="number" tick={{fill:C.muted,fontSize:10}} axisLine={false} tickLine={false}
+                tickFormatter={v=>v>=1000000?`${(v/1000000).toFixed(1)}M`:v>=1000?`${(v/1000).toFixed(0)}K`:v}/>
+              <YAxis type="category" dataKey="stage" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false} width={80}/>
+              <Tooltip content={<CustomTooltip/>}/>
+              <Bar dataKey="value" name="Count" radius={[0,6,6,0]}>
+                {[C.primary,C.secondary,C.success,C.accent,C.warning,C.gold].map((c,i)=><Cell key={i} fill={c}/>)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
+      </div>
+      <GlassCard style={{padding:24}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Channel Comparison · Leads & Conversion</div>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={channelData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+            <XAxis dataKey="channel" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
+            <YAxis yAxisId="left"  tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
+            <YAxis yAxisId="right" orientation="right" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
+            <Tooltip content={<CustomTooltip/>}/>
+            <Bar yAxisId="left"  dataKey="leads"      name="Leads"    fill={C.primary} opacity={0.8} radius={[4,4,0,0]}/>
+            <Bar yAxisId="right" dataKey="conversion" name="Conv. %"  fill={C.success} opacity={0.8} radius={[4,4,0,0]}/>
+          </BarChart>
+        </ResponsiveContainer>
+      </GlassCard>
+    </div>
+  );
+}
+
+// ─── FINANCIAL ──────────────────────────────────────────────────────────────
+function FinancialModule() {
+  return (
+    <div style={{padding:28}}>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6}}>Financial Intelligence</div>
+        <div style={{fontSize:13,color:C.muted}}>P&L · Cash Flow · Budget · Profitability analysis</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:24}}>
+        {[
+          {label:"Total Revenue",  value:"₹48.7Cr",change:"+18.4%",up:true, color:C.primary},
+          {label:"Total Expenses", value:"₹31.8Cr",change:"+11.2%",up:false,color:C.danger},
+          {label:"Net Profit",     value:"₹16.9Cr",change:"+28.6%",up:true, color:C.success},
+          {label:"CAC",            value:"₹2,340",  change:"-8.1%", up:true, color:C.gold},
+        ].map((k,i)=>(
+          <GlassCard key={i} style={{padding:20}}>
+            <div style={{fontSize:11,color:C.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.08em"}}>{k.label}</div>
+            <div style={{fontSize:26,fontWeight:700,color:k.color,marginBottom:4}}>{k.value}</div>
+            <span style={{fontSize:11,color:k.up?C.success:C.danger,background:k.up?`${C.success}18`:`${C.danger}18`,padding:"2px 8px",borderRadius:20,fontWeight:600}}>
+              {k.up?"↑":"↓"} {k.change}
+            </span>
+          </GlassCard>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:20,marginBottom:20}}>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Revenue vs Expenses vs Profit</div>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={financialMetrics}>
+              <defs>
+                <linearGradient id="fg1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={C.primary} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={C.primary} stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="fg2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={C.danger} stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor={C.danger} stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="fg3" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={C.success} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={C.success} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="month" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`₹${v}Cr`}/>
+              <Tooltip content={<CustomTooltip/>}/>
+              <Area type="monotone" dataKey="revenue"  name="Revenue (₹Cr)"  stroke={C.primary} fill="url(#fg1)" strokeWidth={2}/>
+              <Area type="monotone" dataKey="expenses" name="Expenses (₹Cr)" stroke={C.danger}  fill="url(#fg2)" strokeWidth={2}/>
+              <Area type="monotone" dataKey="profit"   name="Profit (₹Cr)"   stroke={C.success} fill="url(#fg3)" strokeWidth={2}/>
+            </AreaChart>
+          </ResponsiveContainer>
+        </GlassCard>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Budget Utilization</div>
+          {[
+            {label:"Marketing",   used:82,budget:"₹1.0Cr",  color:C.primary},
+            {label:"Operations",  used:67,budget:"₹2.4Cr",  color:C.secondary},
+            {label:"Construction",used:91,budget:"₹18.2Cr", color:C.accent},
+            {label:"HR & Admin",  used:74,budget:"₹1.8Cr",  color:C.success},
+            {label:"Technology",  used:55,budget:"₹60L",    color:C.gold},
+          ].map((b,i)=>(
+            <div key={i} style={{marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                <span style={{fontSize:12,color:C.text}}>{b.label}</span>
+                <span style={{fontSize:12,color:b.used>85?C.danger:C.muted}}>{b.used}% of {b.budget}</span>
+              </div>
+              <div style={{height:6,background:C.border,borderRadius:3,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${b.used}%`,background:b.used>85?C.danger:b.color,borderRadius:3,transition:"width 1s ease"}}/>
+              </div>
+            </div>
+          ))}
+        </GlassCard>
+      </div>
+      <GlassCard style={{padding:24}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Cash Flow Analysis</div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={financialMetrics}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+            <XAxis dataKey="month" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
+            <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>`₹${v}Cr`}/>
+            <Tooltip content={<CustomTooltip/>}/>
+            <Bar dataKey="cashflow" name="Cash Flow (₹Cr)" fill={C.primary} opacity={0.8} radius={[4,4,0,0]}/>
+          </BarChart>
+        </ResponsiveContainer>
+      </GlassCard>
+    </div>
+  );
+}
+
+// ─── REAL ESTATE ────────────────────────────────────────────────────────────
+function RealEstateModule() {
+  return (
+    <div style={{padding:28}}>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6}}>Project Intelligence</div>
+        <div style={{fontSize:13,color:C.muted}}>Inventory · Bookings · Sales velocity · Demand forecasting</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:20,marginBottom:24}}>
+        {projects.map((p,i)=>(
+          <GlassCard key={i} style={{padding:24}} glow>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:4}}>{p.name}</div>
+                <div style={{fontSize:11,color:C.muted}}>{p.type} · {p.location}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:18,fontWeight:700,color:p.color}}>{p.value}</div>
+                <div style={{fontSize:11,color:C.success,fontWeight:600}}>{p.growth} YoY</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+              {[
+                {label:"Sold",      val:p.sold,      color:C.success},
+                {label:"Booked",    val:p.booked,    color:C.warning},
+                {label:"Available", val:p.available, color:C.muted},
+              ].map((s,j)=>(
+                <div key={j} style={{textAlign:"center",background:C.bgCard,borderRadius:10,padding:"10px 0"}}>
+                  <div style={{fontSize:20,fontWeight:700,color:s.color}}>{s.val}</div>
+                  <div style={{fontSize:10,color:C.muted}}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{fontSize:11,color:C.muted}}>Sales Progress</span>
+                <span style={{fontSize:11,color:p.color,fontWeight:600}}>{Math.round((p.sold/p.total)*100)}%</span>
+              </div>
+              <div style={{height:8,background:C.bgCard,borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${(p.sold/p.total)*100}%`,background:`linear-gradient(90deg, ${p.color}, ${p.color}99)`,borderRadius:4}}/>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:C.muted}}>{p.total} Total Units</div>
+          </GlassCard>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Inventory Distribution</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={projects}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+              <XAxis dataKey="name" tick={{fill:C.muted,fontSize:10}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
+              <Tooltip content={<CustomTooltip/>}/>
+              <Bar dataKey="sold"      name="Sold"      stackId="a" fill={C.success}/>
+              <Bar dataKey="booked"    name="Booked"    stackId="a" fill={C.warning}/>
+              <Bar dataKey="available" name="Available" stackId="a" fill={`${C.muted}44`}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
+        <GlassCard style={{padding:24}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Demand Forecast by Project</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <RadarChart data={[
+              {project:"Avenue 07",demand:88,leads:75,velocity:82},
+              {project:"Blith",    demand:72,leads:68,velocity:70},
+              {project:"Nest",     demand:65,leads:80,velocity:60},
+              {project:"Canopy",   demand:91,leads:85,velocity:88},
+            ]}>
+              <PolarGrid stroke={C.border}/>
+              <PolarAngleAxis dataKey="project" tick={{fill:C.muted,fontSize:11}}/>
+              <Radar name="Demand" dataKey="demand" stroke={C.primary} fill={C.primary} fillOpacity={0.2}/>
+              <Radar name="Leads"  dataKey="leads"  stroke={C.success} fill={C.success} fillOpacity={0.15}/>
+              <Tooltip contentStyle={{background:"rgba(6,11,20,0.95)",border:`1px solid ${C.border}`,borderRadius:8,fontSize:12}}/>
+            </RadarChart>
+          </ResponsiveContainer>
+        </GlassCard>
+      </div>
+    </div>
+  );
+}
+
+// ─── FORECASTING ────────────────────────────────────────────────────────────
+function ForecastingModule() {
+  const [scenario,setScenario] = useState("base");
+  return (
+    <div style={{padding:28}}>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6}}>AI Forecasting Engine</div>
+        <div style={{fontSize:13,color:C.muted}}>Predictive modeling · Confidence intervals · Scenario planning</div>
+      </div>
+      <div style={{display:"flex",gap:10,marginBottom:24,flexWrap:"wrap"}}>
+        {["base","optimistic","pessimistic"].map(s=>(
+          <button key={s} onClick={()=>setScenario(s)} style={{
+            padding:"8px 20px",borderRadius:10,fontSize:12,fontWeight:600,cursor:"pointer",
+            background:scenario===s?C.primary:C.bgCard,
+            color:scenario===s?"#000":C.muted,
+            border:`1px solid ${scenario===s?C.primary:C.border}`,
+            textTransform:"capitalize",transition:"all 0.2s",
+          }}>{s} Case</button>
+        ))}
+      </div>
+      <GlassCard style={{padding:24,marginBottom:20}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:18}}>Revenue Forecast — Next 5 Months</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:24}}>
+          {forecastData.map((f,i)=>(
+            <div key={i} style={{textAlign:"center",background:C.bgCard,borderRadius:12,padding:16}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{f.month} 2025</div>
+              <div style={{fontSize:20,fontWeight:700,color:scenario==="base"?C.primary:scenario==="optimistic"?C.success:C.danger}}>₹{f[scenario]}Cr</div>
+              <div style={{fontSize:10,color:C.muted,marginTop:4}}>CI: ₹{f.pessimistic}–{f.optimistic}Cr</div>
+            </div>
+          ))}
+        </div>
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={[
+            ...revenueData.filter(d=>d.revenue).map(d=>({...d,type:"actual"})),
+            ...forecastData.map(f=>({month:f.month,forecast:f[scenario],upper:f.optimistic,lower:f.pessimistic}))
+          ]}>
+            <defs>
+              <linearGradient id="fa" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={C.primary} stopOpacity={0.3}/>
+                <stop offset="95%" stopColor={C.primary} stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="ff" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={C.gold} stopOpacity={0.25}/>
+                <stop offset="95%" stopColor={C.gold} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border}/>
+            <XAxis dataKey="month" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
+            <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false} tickFormatter={v=>v?`₹${v}Cr`:""}/>
+            <Tooltip content={<CustomTooltip/>}/>
+            <Area type="monotone" dataKey="revenue"  name="Actual Revenue" stroke={C.primary} fill="url(#fa)" strokeWidth={2}/>
+            <Area type="monotone" dataKey="forecast" name="Forecasted"     stroke={C.gold}    fill="url(#ff)" strokeWidth={2} strokeDasharray="6 3"/>
+            <Area type="monotone" dataKey="upper"    name="Upper Bound"    stroke={C.success} fill="transparent" strokeWidth={1} strokeDasharray="4 4"/>
+            <Area type="monotone" dataKey="lower"    name="Lower Bound"    stroke={C.danger}  fill="transparent" strokeWidth={1} strokeDasharray="4 4"/>
+          </AreaChart>
+        </ResponsiveContainer>
+      </GlassCard>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+        {[
+          {title:"Lead Forecast",    icon:"◎",q1:"18,400",q2:"22,100",accuracy:"94.2%",color:C.primary},
+          {title:"ROAS Forecast",    icon:"◇",q1:"6.4x",  q2:"7.1x",  accuracy:"91.8%",color:C.gold},
+          {title:"Conversion Rate",  icon:"◈",q1:"9.1%",  q2:"10.3%", accuracy:"88.5%",color:C.success},
+        ].map((f,i)=>(
+          <GlassCard key={i} style={{padding:20}} glow>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+              <span style={{color:f.color,fontSize:16}}>{f.icon}</span>
+              <span style={{fontSize:13,fontWeight:600,color:C.text}}>{f.title}</span>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{background:C.bgCard,borderRadius:10,padding:12,textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:f.color}}>{f.q1}</div>
+                <div style={{fontSize:10,color:C.muted}}>Q1 FY26</div>
+              </div>
+              <div style={{background:C.bgCard,borderRadius:10,padding:12,textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:f.color}}>{f.q2}</div>
+                <div style={{fontSize:10,color:C.muted}}>Q2 FY26</div>
+              </div>
+            </div>
+            <div style={{marginTop:12,fontSize:11,color:C.muted,display:"flex",justifyContent:"space-between"}}>
+              <span>Model Accuracy</span>
+              <span style={{color:C.success,fontWeight:600}}>{f.accuracy}</span>
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── COPILOT ────────────────────────────────────────────────────────────────
+function CopilotModule() {
+  const [messages,setMessages] = useState(copilotConversations);
+  const [input,setInput] = useState("");
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState(null);
+  const endRef = useRef(null);
+
+  useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[messages]);
+
+  const quickPrompts = [
+    "Show highest ROI campaign",
+    "Why did CPL increase last month?",
+    "Compare Meta vs Google performance",
+    "Budget optimization for Q4",
+    "Which project needs attention?",
+    "Predict Canopy demand next quarter",
+  ];
+
+  const sendMessage = async (text) => {
+    const userMsg = text || input.trim();
+    if (!userMsg) return;
+    setInput("");
+    setError(null);
+    setMessages(prev=>[...prev,{role:"user",text:userMsg}]);
+    setLoading(true);
+
+    const systemPrompt = `You are AssoBot, the AI analytics copilot for Assotech World — a premium real estate company in Bhubaneswar, Odisha. You have access to all their marketing, financial, and sales data.
+
+Key data context:
+- Total Revenue: ₹48.7Cr (FY 2024-25), +18.4% YoY
+- Total Leads: 14,892 | Avg CPL: ₹554 | Avg ROAS: 5.91x
+- Projects: Avenue 07 (₹18.4Cr), Blith (₹14.2Cr), Nest (₹9.8Cr), Canopy (₹6.3Cr, +31% growth)
+- Top campaign: Meta Retargeting (ROAS 7.4x) | Weakest: YouTube (ROAS 2.1x, CPL ₹1,400)
+- Meta Ads: 8,152 leads | Google Ads: 6,190 leads | Organic: 2,780 leads
+- Profit Margin: 34.6% | CAC: ₹2,340
+- Forecasted Feb revenue: ₹8.9Cr (base case)
+
+Respond as a sharp, data-driven AI analyst. Be concise, specific, and always include numbers and insights. Use ₹ for currency. Occasionally suggest actionable next steps. Keep responses under 4 sentences.`;
+
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1000,
+          system:systemPrompt,
+          messages:[
+            ...messages.map(m=>({role:m.role==="ai"?"assistant":"user",content:m.text})),
+            {role:"user",content:userMsg}
+          ]
+        })
+      });
+      const data = await resp.json();
+      const reply = data.content?.[0]?.text || "I couldn't process that. Please try again.";
+      setMessages(prev=>[...prev,{role:"ai",text:reply}]);
+    } catch(err) {
+      setError("Connection error. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{padding:28,height:"calc(100vh - 64px)",display:"flex",flexDirection:"column"}}>
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6}}>AI Analytics Copilot</div>
+        <div style={{fontSize:13,color:C.muted}}>Ask anything about your business data · Powered by Claude</div>
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        {quickPrompts.map((p,i)=>(
+          <button key={i} onClick={()=>sendMessage(p)} style={{
+            fontSize:11,padding:"6px 14px",borderRadius:20,cursor:"pointer",
+            background:C.bgCard,border:`1px solid ${C.border}`,color:C.muted,
+            transition:"all 0.15s",
+          }}
+            onMouseEnter={e=>{e.target.style.borderColor=C.primary;e.target.style.color=C.primary;}}
+            onMouseLeave={e=>{e.target.style.borderColor=C.border;e.target.style.color=C.muted;}}
+          >{p}</button>
+        ))}
+      </div>
+      <GlassCard style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{flex:1,overflowY:"auto",padding:20}}>
+          {messages.map((m,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:16}}>
+              {m.role==="ai"&&(
+                <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg, ${C.primary}, ${C.secondary})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#000",marginRight:10,flexShrink:0,marginTop:2}}>✦</div>
+              )}
+              <div style={{
+                maxWidth:"72%",padding:"12px 16px",
+                borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",
+                background:m.role==="user"?`${C.primary}22`:C.bgCardHover,
+                border:`1px solid ${m.role==="user"?C.primary+"44":C.border}`,
+                fontSize:13,color:C.text,lineHeight:1.6,
+              }}>{m.text}</div>
+            </div>
+          ))}
+          {loading&&(
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg, ${C.primary}, ${C.secondary})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#000"}}>✦</div>
+              <div style={{padding:"12px 16px",borderRadius:"16px 16px 16px 4px",background:C.bgCardHover,border:`1px solid ${C.border}`}}>
+                <div style={{display:"flex",gap:4}}>
+                  {[0,1,2].map(i=>(
+                    <div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.primary,animation:`pulse 1.2s ease-in-out ${i*0.2}s infinite`}}/>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {error&&<div style={{color:C.danger,fontSize:12,textAlign:"center",marginBottom:12}}>{error}</div>}
+          <div ref={endRef}/>
+        </div>
+        <div style={{padding:"16px 20px",borderTop:`1px solid ${C.border}`,display:"flex",gap:10}}>
+          <input
+            value={input}
+            onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&sendMessage()}
+            placeholder="Ask about campaigns, forecasts, performance..."
+            style={{flex:1,background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 16px",color:C.text,fontSize:13,outline:"none"}}
+          />
+          <button onClick={()=>sendMessage()} disabled={loading||!input.trim()} style={{
+            padding:"10px 20px",borderRadius:12,background:C.primary,border:"none",
+            color:"#000",fontWeight:700,fontSize:13,cursor:loading?"not-allowed":"pointer",
+            opacity:loading||!input.trim()?0.5:1,transition:"opacity 0.2s",
+          }}>→</button>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+// ─── UPLOAD ─────────────────────────────────────────────────────────────────
+function UploadModule() {
+  const [dragOver,setDragOver] = useState(false);
+  const [uploading,setUploading] = useState(false);
+  const [progress,setProgress] = useState(0);
+  const [stage,setStage] = useState("");
+  const [done,setDone] = useState(false);
+  const [fileName,setFileName] = useState("");
+  const inputRef = useRef(null);
+
+  const processFile = async (file) => {
+    setFileName(file.name);
+    setUploading(true);
+    setDone(false);
+    const stages=[
+      [15,"Uploading file..."],[30,"Validating structure..."],
+      [45,"Detecting columns & metrics..."],[60,"Cleaning & preprocessing data..."],
+      [72,"Identifying KPIs & patterns..."],[84,"Building analytics engine..."],
+      [93,"Generating AI insights..."],[100,"Dashboard ready!"],
+    ];
+    for(const [p,s] of stages){
+      setStage(s);setProgress(p);
+      await new Promise(r=>setTimeout(r,400+Math.random()*300));
+    }
+    setDone(true);setUploading(false);
+  };
+
+  const handleDrop=(e)=>{e.preventDefault();setDragOver(false);const f=e.dataTransfer.files[0];if(f)processFile(f);};
+  const handleInput=(e)=>{const f=e.target.files[0];if(f)processFile(f);};
+  const reset=()=>{setDone(false);setProgress(0);setStage("");setFileName("");};
+
+  return (
+    <div style={{padding:28}}>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6}}>Data Upload & Processing</div>
+        <div style={{fontSize:13,color:C.muted}}>Upload Excel or CSV · AI auto-processes and builds your dashboard</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:24}}>
+        <div>
+          <div
+            onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+            onDragLeave={()=>setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={()=>!uploading&&!done&&inputRef.current?.click()}
+            style={{
+              border:`2px dashed ${dragOver?C.primary:done?C.success:C.border}`,
+              borderRadius:20,padding:"60px 40px",textAlign:"center",
+              cursor:uploading||done?"default":"pointer",
+              background:dragOver?`${C.primary}08`:done?`${C.success}08`:C.bgCard,
+              transition:"all 0.25s",marginBottom:20,
+            }}
+          >
+            <input ref={inputRef} type="file" accept=".xlsx,.csv,.xls" onChange={handleInput} style={{display:"none"}}/>
+            {!uploading&&!done&&(
+              <>
+                <div style={{fontSize:48,marginBottom:16}}>⊕</div>
+                <div style={{fontSize:18,fontWeight:600,color:C.text,marginBottom:8}}>Drop your file here</div>
+                <div style={{fontSize:13,color:C.muted,marginBottom:20}}>Excel (.xlsx) or CSV files supported</div>
+                <button style={{padding:"10px 28px",background:C.primary,border:"none",borderRadius:10,color:"#000",fontWeight:700,fontSize:13,cursor:"pointer"}}>Browse Files</button>
+              </>
+            )}
+            {uploading&&(
+              <div>
+                <div style={{fontSize:14,fontWeight:600,color:C.primary,marginBottom:8}}>{fileName}</div>
+                <div style={{fontSize:13,color:C.muted,marginBottom:20}}>✦ {stage}</div>
+                <div style={{height:6,background:C.border,borderRadius:3,overflow:"hidden",marginBottom:12,maxWidth:400,margin:"0 auto 12px"}}>
+                  <div style={{height:"100%",width:`${progress}%`,background:`linear-gradient(90deg, ${C.primary}, ${C.secondary})`,borderRadius:3,transition:"width 0.4s ease"}}/>
+                </div>
+                <div style={{fontSize:28,fontWeight:700,color:C.primary}}>{progress}%</div>
+              </div>
+            )}
+            {done&&(
+              <div>
+                <div style={{fontSize:48,marginBottom:12}}>✓</div>
+                <div style={{fontSize:18,fontWeight:600,color:C.success,marginBottom:8}}>Analysis Complete!</div>
+                <div style={{fontSize:13,color:C.muted,marginBottom:20}}>{fileName} · Dashboard updated with your data</div>
+                <button onClick={reset} style={{padding:"10px 28px",background:C.bgCard,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,fontWeight:600,fontSize:13,cursor:"pointer"}}>Upload Another File</button>
+              </div>
+            )}
+          </div>
+          {done&&(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+              {[
+                {icon:"◈",label:"Columns Detected",value:"24",  color:C.primary},
+                {icon:"◇",label:"Rows Processed",  value:"3,482",color:C.success},
+                {icon:"◉",label:"KPIs Identified", value:"18",  color:C.gold},
+              ].map((s,i)=>(
+                <GlassCard key={i} style={{padding:18,textAlign:"center"}}>
+                  <div style={{fontSize:20,color:s.color,marginBottom:6}}>{s.icon}</div>
+                  <div style={{fontSize:20,fontWeight:700,color:s.color}}>{s.value}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{s.label}</div>
+                </GlassCard>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          <GlassCard style={{padding:22,marginBottom:16}}>
+            <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:16}}>Supported Formats</div>
+            {[
+              {fmt:".xlsx",desc:"Excel Workbook",   color:C.success},
+              {fmt:".xls", desc:"Excel 97-2003",    color:C.success},
+              {fmt:".csv", desc:"Comma Separated",  color:C.primary},
+            ].map((f,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                <span style={{fontSize:12,fontWeight:700,padding:"3px 8px",borderRadius:6,background:`${f.color}20`,color:f.color}}>{f.fmt}</span>
+                <span style={{fontSize:12,color:C.muted}}>{f.desc}</span>
+              </div>
+            ))}
+          </GlassCard>
+          <GlassCard style={{padding:22}}>
+            <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:14}}>AI Processing Pipeline</div>
+            {["Upload → Validate","Parse → Detect Columns","Clean → Preprocess","Identify KPIs","Build Analytics","Generate Insights","Update Dashboard"].map((step,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:`${C.primary}20`,border:`1px solid ${C.primary}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:C.primary,flexShrink:0}}>{i+1}</div>
+                <span style={{fontSize:12,color:C.muted}}>{step}</span>
+              </div>
+            ))}
+          </GlassCard>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LANDING ────────────────────────────────────────────────────────────────
+function LandingPage({onEnter}) {
+  const [visible,setVisible] = useState(false);
+  useEffect(()=>{setTimeout(()=>setVisible(true),100);},[]);
+
+  return (
+    <div style={{
+      minHeight:"100vh",background:C.bg,
+      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      position:"relative",overflow:"hidden",
+      fontFamily:"'DM Sans', system-ui, sans-serif",
+    }}>
+      <div style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
+        {[...Array(6)].map((_,i)=>(
+          <div key={i} style={{
+            position:"absolute",
+            width:[400,300,350,280,320,260][i],
+            height:[400,300,350,280,320,260][i],
+            borderRadius:"50%",
+            background:[`${C.primary}08`,`${C.secondary}06`,`${C.accent}06`,`${C.primary}05`,`${C.success}05`,`${C.secondary}04`][i],
+            left:["-10%","60%","20%","75%","5%","45%"][i],
+            top:["10%","5%","55%","60%","70%","30%"][i],
+            filter:"blur(60px)",
+          }}/>
+        ))}
+        <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.border} 1px, transparent 1px)`,backgroundSize:"40px 40px",opacity:0.4}}/>
+      </div>
+      <div style={{
+        textAlign:"center",maxWidth:780,padding:"0 24px",position:"relative",zIndex:10,
+        opacity:visible?1:0,transform:visible?"translateY(0)":"translateY(30px)",
+        transition:"all 0.8s cubic-bezier(0.22,1,0.36,1)",
+      }}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:8,background:`${C.primary}15`,border:`1px solid ${C.primary}33`,borderRadius:24,padding:"6px 18px",marginBottom:32}}>
+          <span style={{width:6,height:6,borderRadius:"50%",background:C.success,display:"inline-block"}}/>
+          <span style={{fontSize:11,color:C.primary,fontWeight:600,letterSpacing:"0.1em"}}>AI-POWERED INTELLIGENCE PLATFORM</span>
+        </div>
+        <div style={{fontSize:11,letterSpacing:"0.25em",color:C.muted,textTransform:"uppercase",marginBottom:20}}>ASSOTECH WORLD</div>
+        <h1 style={{fontSize:58,fontWeight:800,color:C.text,lineHeight:1.08,marginBottom:20,letterSpacing:"-0.03em"}}>
+          Transforming Data Into<br/>
+          <span style={{background:`linear-gradient(135deg, ${C.primary}, ${C.secondary})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+            Intelligent Decisions
+          </span>
+        </h1>
+        <p style={{fontSize:17,color:C.muted,lineHeight:1.7,marginBottom:40,maxWidth:580,margin:"0 auto 40px"}}>
+          Enterprise-grade analytics, AI forecasting, and decision intelligence for real estate executives, marketing teams, and investors.
+        </p>
+        <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
+          <button onClick={onEnter} style={{
+            padding:"14px 36px",background:`linear-gradient(135deg, ${C.primary}, ${C.secondary})`,
+            border:"none",borderRadius:12,color:"#000",fontWeight:800,fontSize:15,cursor:"pointer",
+            boxShadow:`0 8px 30px ${C.primary}30`,transition:"transform 0.2s",
+          }}
+            onMouseEnter={e=>e.target.style.transform="translateY(-2px)"}
+            onMouseLeave={e=>e.target.style.transform="translateY(0)"}
+          >Launch Dashboard →</button>
+          <button onClick={onEnter} style={{
+            padding:"14px 28px",background:"transparent",
+            border:`1px solid ${C.border}`,borderRadius:12,color:C.text,fontWeight:600,fontSize:14,cursor:"pointer",
+            transition:"all 0.2s",
+          }}
+            onMouseEnter={e=>{e.target.style.borderColor=C.primary;e.target.style.color=C.primary;}}
+            onMouseLeave={e=>{e.target.style.borderColor=C.border;e.target.style.color=C.text;}}
+          >⊕ Upload Your Data</button>
+        </div>
+      </div>
+      <div style={{position:"absolute",bottom:32,left:"50%",transform:"translateX(-50%)",opacity:visible?1:0,transition:"opacity 1s 0.5s",display:"flex",gap:40,zIndex:10}}>
+        {[["₹48.7Cr","Annual Revenue"],["14.9K","Leads Generated"],["5.91x","Average ROAS"],["34.6%","Profit Margin"]].map(([v,l],i)=>(
+          <div key={i} style={{textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:C.primary}}>{v}</div>
+            <div style={{fontSize:11,color:C.muted}}>{l}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT APP ───────────────────────────────────────────────────────────────
+function App() {
+  const [showLanding,setShowLanding] = useState(true);
+  const [activeModule,setActiveModule] = useState("home");
+
+  if(showLanding) return <LandingPage onEnter={()=>setShowLanding(false)}/>;
+
+  const modules = {
+    home:        <OverviewModule/>,
+    marketing:   <MarketingModule/>,
+    financial:   <FinancialModule/>,
+    realestate:  <RealEstateModule/>,
+    forecasting: <ForecastingModule/>,
+    copilot:     <CopilotModule/>,
+    upload:      <UploadModule/>,
+  };
+
+  return (
+    <div style={{fontFamily:"'DM Sans', system-ui, sans-serif",background:C.bg,minHeight:"100vh",color:C.text}}>
+      <SidebarNav active={activeModule} setActive={setActiveModule}/>
+      <div style={{marginLeft:220}}>
+        <Header activeModule={activeModule}/>
+        <div style={{overflowY:"auto"}}>
+          {modules[activeModule] || <OverviewModule/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
